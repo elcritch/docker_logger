@@ -26,7 +26,8 @@ defmodule DockerLogger.Mixfile do
       {:socket, "~> 0.3"},
       # {:procket, "~> 0.9.3"},
       {:shotgun, "~> 0.3.0"},
-      {:httpotion, "> 0.0.0"}
+      {:exactor, "~> 2.2.3", warn_missing: false},
+      # {:httpotion, "> 0.0.0"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
     ]

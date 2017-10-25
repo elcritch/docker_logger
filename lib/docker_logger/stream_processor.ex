@@ -1,27 +1,25 @@
-defmodule TcpServer do
+defmodule DockerLogger.StreamProcessor do
   use GenServer
+  alias Elixir.Stream, as: S
 
   @string_size_limit 20_000
 
-  def start_link(%{id: _id, cmd: _cmd, stream_handler: _handler} = args) do
+  # def start_link(args \\ []) do
+  #   IO.puts "StreamProcessor:init2: #{inspect args}"
+  #   GenServer.start_link(__MODULE__,args,[])
+  # end
+
+  def start_link(args) do
+    IO.puts "StreamProcessor: #{inspect args}"
     GenServer.start_link(__MODULE__,args,[])
   end
 
   def init(args) do
+    IO.puts "StreamProcessor: #{inspect args}"
     {:ok, socket} = :gen_tcp.connect({:local, "/var/run/docker.sock"}, 0, [{:active, false}, :binary])
     GenServer.cast self(), :start
     GenServer.cast self(), args.stream_handler
     {:ok, %{socket: socket} |> Map.merge(args) }
-  end
-
-  def start_container_watcher(id) do
-    cmd = "GET /containers/#{id}/logs?stderr=0&stdout=1&timestamps=0&follow=1&since=#{DateTime.to_unix(DateTime.utc_now) - 10} HTTP/1.1\n"
-    start_link(%{id: id, cmd: cmd, stream_handler: :logs})
-  end
-
-  def start_events_watcher(id) do
-    cmd = "GET /events HTTP/1.1\n"
-    start_link(%{id: id, cmd: cmd})
   end
 
   def handle_cast(:start, %{socket: socket, cmd: cmd} = state) do
@@ -41,30 +39,43 @@ defmodule TcpServer do
     {:noreply, state}
   end
 
-  def handle_cast(:logs, %{socket: socket, id: id} = state) do
+  def handle_cast(:logs, %{socket: socket, info: info} = state) do
     # process docker logs
     stream(socket)
-      |> docker_log_parse
-      # |> Stream.each(fn x -> IO.puts "logs:check: #{inspect x}" end)
-      |> stream_to_lines
-      |> parse_docker_logs
-      |> Enum.each( &(process_log(&1, id)) )
+    |> docker_log_parse
+    # |> S.each(fn x -> IO.puts "logs:check: #{inspect x}" end)
+    |> stream_to_lines
+    |> parse_docker_logs
+    |> Enum.each( &(process_log(&1, info)) )
 
-    {:noreply, state}
+    {:stop, :normal, state}
+  end
+
+  def handle_cast(:events, %{socket: socket, id: id, sink: sink} = state) do
+    # process events
+    stream(socket)
+    |> stream_to_lines
+    |> S.chunk_every(3)
+    |> S.map(&(Enum.at(&1,1)))
+    |> S.map(&Poison.decode!/1)
+    |> S.map(fn event -> GenServer.cast(sink, {:event, event}) end)
+    |> Enum.each( &( IO.puts "events: #{inspect &1}" ) )
+
+    {:stop, :normal, state}
   end
 
   def stream(socket) do
-    Stream.repeatedly(fn -> res = :gen_tcp.recv(socket,0); {:ok, msg} = res; msg end)
-    |> Stream.flat_map(fn x -> :binary.bin_to_list(x); end)
-    |> Stream.map(fn x -> <<x>> end)
+    S.repeatedly(fn -> res = :gen_tcp.recv(socket,0); {:ok, msg} = res; msg end)
+    |> S.flat_map(fn x -> :binary.bin_to_list(x); end)
+    |> S.map(fn x -> <<x>> end)
   end
 
-  def process_log(item, id) do
-    IO.puts "logs: #{inspect item}"
+  def process_log(item, info) do
+    IO.puts "logs: #{inspect item}, info: #{inspect info}"
   end
 
   def stream_to_lines(stream) do
-    stream |> Stream.chunk_while({[],0},
+    stream |> S.chunk_while({[],0},
         fn i, {acc, count} ->
           if i == "\n" do
             # turn list of bin's into single line
@@ -77,7 +88,7 @@ defmodule TcpServer do
   end
 
   def docker_log_parse(stream) do
-    stream |> Stream.chunk_while({:header, [], 0},
+    stream |> S.chunk_while({:header, [], 0},
       fn i, {tag, acc, count} ->
         cond do
           :header == tag && (i == "\n") && List.last(acc) == "\r" ->
@@ -102,7 +113,7 @@ defmodule TcpServer do
   end
 
   def parse_http_headers(stream) do
-    stream |> Stream.transform([], fn i, acc ->
+    stream |> S.transform([], fn i, acc ->
           if i == "\n" && acc == ["\r", "\n", "\r"]  do
             {:halt, [i]}
           else
@@ -112,7 +123,7 @@ defmodule TcpServer do
   end
 
   def parse_docker_logs(stream) do
-    stream |> Stream.map(fn line ->
+    stream |> S.map(fn line ->
         case line do
           # deplex stdin, stdout, stderr
           <<0, 0, 0, 0, n :: size(32), rest :: binary >> -> {:stdin, rest}
@@ -122,16 +133,6 @@ defmodule TcpServer do
           other -> {:tty, other}
         end
     end)
-  end
-
-  def handle_info({:tcp,socket,packet},state) do
-    # IO.inspect packet, label: "incoming packet"
-
-    IO.puts "\n\n====\nincoming packet: #{packet }"
-    IO.puts "incoming packet: raw: #{inspect String.split(packet,"\n") }"
-    :inet.setopts(socket, active: :once)
-
-    {:noreply,state}
   end
 
   def handle_info({:tcp_closed,socket},state) do
