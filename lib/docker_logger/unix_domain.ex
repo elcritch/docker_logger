@@ -20,7 +20,7 @@ defmodule TcpServer do
   end
 
   def start_events_watcher(id) do
-    socket |> :gen_tcp.send("GET /events HTTP/1.1\n")
+    cmd = "GET /events HTTP/1.1\n"
     start_link(%{id: id, cmd: cmd})
   end
 
@@ -49,7 +49,6 @@ defmodule TcpServer do
       |> stream_to_lines
       |> parse_docker_logs
       |> Enum.each( &(process_log(&1, id)) )
-      # |> Enum.each(fn x -> IO.puts "logs: #{inspect x}" end)
 
     {:noreply, state}
   end
