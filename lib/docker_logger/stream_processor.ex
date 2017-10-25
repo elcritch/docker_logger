@@ -71,7 +71,7 @@ defmodule DockerLogger.StreamProcessor do
   end
 
   def process_log(item, info) do
-    IO.puts "logs: #{inspect item}, info: #{inspect info}"
+    IO.puts "logs: #{inspect item}, info: #{inspect Map.fetch!(info, "Id")}"
   end
 
   def stream_to_lines(stream) do

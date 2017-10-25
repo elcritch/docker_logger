@@ -32,19 +32,29 @@ defmodule DockerLogger.Monitor do
 
   def init(args) do
     GenServer.cast self(), :start
+    GenServer.cast self(), :update_containers
     {:ok, %{containers: %{}} |> Map.merge(args) }
   end
 
-  def handle_cast(:start, %{containers: containers} = state) do
+  def handle_cast(:start, state) do
+    self()
+    |> DockerLogger.StreamProcessSupervisor.start_events_watcher()
+
+    {:noreply, state}
+  end
+
+  def handle_cast(:update_containers, %{containers: containers} = state) do
     ignorekeys = ["NetworkSettings","HostConfig","Mounts", "Labels"]
+
+    IO.puts "Monitor:container:update_containers:"
 
     new_containers =
       Dockerex.Client.get("containers/json")
-      |> S.filter(&( "running" == Map.fetch! &1, "State" ))
+      |> S.each(&( IO.puts "new container: #{inspect &1}"))
+      |> S.filter(&( Regex.match?(~r/running|start/, Map.fetch!(&1, "State"))))
       |> S.map(&( &1 |> Map.drop(ignorekeys) ))
       |> S.map(&( {Map.fetch!(&1, "Id"), &1} ))
       |> S.reject(fn ({id,map}) -> containers |> Map.has_key?(id) end)
-      # |> S.each(&( IO.puts "new container: #{&1 |> elem(0)}"))
       |> Enum.into(%{})
 
     new_containers
@@ -56,15 +66,25 @@ defmodule DockerLogger.Monitor do
 
   def handle_cast({:process, container_info}, state) do
 
-    ret = container_info
+    IO.puts "Monitor:container:res: #{inspect container_info}"
+    container_info
     |> DockerLogger.StreamProcessSupervisor.start_container_watcher()
-    IO.puts "Monitor:container:res: #{inspect ret}"
 
     {:noreply, state}
   end
 
-  def handle_cast({:event, event}, state) do
-    IO.puts "Monitor:event: #{inspect event }"
+  def handle_cast({:event, %{"Action" => action} = event }, state) do
+    IO.puts "Monitor:event:: #{inspect event }"
+    case action do
+      "start" ->
+        GenServer.cast self(), :update_containers
+        {:noreply, state}
+      "die" ->
+        id = Map.fetch!(event, "ID", nil) || Map.fetch!(event, "Id")
+        {:noreply, %{ state | containers: Map.delete(state.containers, id) } }
+      _ ->
+        {:noreply, state}
+    end
   end
 end
 
@@ -80,21 +100,17 @@ defmodule DockerLogger.StreamProcessSupervisor do
   def start_container_watcher(%{"Id" => id} = info) do
     IO.puts "Monitor:container: #{inspect info}"
 
-    cmd = "GET /containers/#{id}/logs?stderr=0&stdout=1&timestamps=0&follow=1&since=#{DateTime.to_unix(DateTime.utc_now) - 1} HTTP/1.1\n"
+    cmd = "GET /containers/#{id}/logs?stderr=1&stdout=1&timestamps=0&follow=1&since=#{DateTime.to_unix(DateTime.utc_now) - 1} HTTP/1.1\n"
     args = %{info: info, cmd: cmd, stream_handler: :logs}
     Supervisor.start_child(@name, [args])
   end
 
-  def start_events_watcher() do
+  def start_events_watcher(pid) do
     ts = DateTime.to_unix(DateTime.utc_now)
     cmd = "GET /events?since=#{ts} HTTP/1.1\n"
-    args = %{id: ts, cmd: cmd, stream_handler: :events}
+    args = %{id: ts, cmd: cmd, stream_handler: :events, sink: pid}
     Supervisor.start_child(@name, [args])
   end
-
-  # def handle_cast({:start, args}, state) do
-  #   IO.puts "Monitor:event: #{inspect event }"
-  # end
 
   def init(:ok) do
     children = [
