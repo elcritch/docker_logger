@@ -4,11 +4,6 @@ defmodule DockerLogger.StreamProcessor do
 
   @string_size_limit 20_000
 
-  # def start_link(args \\ []) do
-  #   IO.puts "StreamProcessor:init2: #{inspect args}"
-  #   GenServer.start_link(__MODULE__,args,[])
-  # end
-
   def start_link(args) do
     IO.puts "StreamProcessor: #{inspect args}"
     GenServer.start_link(__MODULE__,args,[])
@@ -43,7 +38,6 @@ defmodule DockerLogger.StreamProcessor do
     # process docker logs
     stream(socket)
     |> docker_log_parse
-    # |> S.each(fn x -> IO.puts "logs:check: #{inspect x}" end)
     |> stream_to_lines
     |> parse_docker_logs
     |> Enum.each( &(process_log(&1, info)) )
