@@ -3,46 +3,52 @@ defmodule TcpServer do
 
   @string_size_limit 20_000
 
-  def start_link(%{id: id, cmd: cmd} = args) do
+  def start_link(%{id: _id, cmd: _cmd, stream_handler: _handler} = args) do
     GenServer.start_link(__MODULE__,args,[])
   end
 
   def init(args) do
     {:ok, socket} = :gen_tcp.connect({:local, "/var/run/docker.sock"}, 0, [{:active, false}, :binary])
-    GenServer.cast self(), {:start}
+    GenServer.cast self(), :start
+    GenServer.cast self(), args.stream_handler
     {:ok, %{socket: socket} |> Map.merge(args) }
   end
 
   def start_container_watcher(id) do
     cmd = "GET /containers/#{id}/logs?stderr=0&stdout=1&timestamps=0&follow=1&since=#{DateTime.to_unix(DateTime.utc_now) - 10} HTTP/1.1\n"
+    start_link(%{id: id, cmd: cmd, stream_handler: :logs})
+  end
+
+  def start_events_watcher(id) do
+    socket |> :gen_tcp.send("GET /events HTTP/1.1\n")
     start_link(%{id: id, cmd: cmd})
   end
 
-  def handle_cast({:start}, %{socket: socket, id: id, cmd: cmd} = state) do
-    # socket |> :gen_tcp.send("GET /events HTTP/1.1\n")
-    # socket |> :gen_tcp.send("POST /containers/#{id}/attach?stream=1&stdout=0&stderr=1 HTTP/1.1\n")
-
+  def handle_cast(:start, %{socket: socket, cmd: cmd} = state) do
     socket |> :gen_tcp.send(cmd)
     socket |> :gen_tcp.send("Host: localhost\r\n")
     socket |> :gen_tcp.send("Accept: */*\r\n")
     socket |> :gen_tcp.send("Connection: Upgrade\r\n")
     socket |> :gen_tcp.send("Upgrade: tcp\r\n")
-    socket |> :gen_tcp.send("\n")
+    socket |> :gen_tcp.send("\r\n")
 
     # process headers
-    resource =
+    headers =
       stream(socket)
       |> parse_http_headers
       |> Enum.to_list
-      # |> Enum.each(&(IO.puts "header: #{&1}"))
 
+    {:noreply, state}
+  end
+
+  def handle_cast(:logs, %{socket: socket, id: id} = state) do
     # process docker logs
     stream(socket)
       |> docker_log_parse
       # |> Stream.each(fn x -> IO.puts "logs:check: #{inspect x}" end)
       |> stream_to_lines
       |> parse_docker_logs
-      |> Enum.each(&process_log/1)
+      |> Enum.each( &(process_log(&1, id)) )
       # |> Enum.each(fn x -> IO.puts "logs: #{inspect x}" end)
 
     {:noreply, state}
@@ -54,7 +60,7 @@ defmodule TcpServer do
     |> Stream.map(fn x -> <<x>> end)
   end
 
-  def process_log(item) do
+  def process_log(item, id) do
     IO.puts "logs: #{inspect item}"
   end
 
