@@ -51,9 +51,7 @@ defmodule DockerLogger.StreamProcessor do
     |> stream_to_lines
     |> S.chunk_every(3)
     |> S.map(&(Enum.at(&1,1)))
-    |> S.map(&Poison.decode!/1)
-    |> S.map(fn event -> GenServer.cast(sink, {:event, event}) end)
-    |> Enum.each( &( IO.puts "events: #{inspect &1}" ) )
+    |> Enum.each(fn event -> GenServer.cast(sink, {:event, event}) end)
 
     {:stop, :normal, state}
   end

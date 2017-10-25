@@ -9,24 +9,22 @@ defmodule DockerLogger.Monitor do
   def init(args) do
     GenServer.cast self(), :start
     GenServer.cast self(), :update_containers
-    {:ok, %{containers: %{}} |> Map.merge(args) }
+    {:ok, %{containers: %{}, pids: %{}} |> Map.merge(args) }
   end
 
   def handle_cast(:start, state) do
-    self()
-    |> DockerLogger.StreamProcessSupervisor.start_events_watcher()
-
+    DockerLogger.StreamProcessSupervisor.start_events_watcher(self())
     {:noreply, state}
   end
 
   def handle_cast(:update_containers, %{containers: containers} = state) do
     ignorekeys = ["NetworkSettings","HostConfig","Mounts", "Labels"]
 
-    IO.puts "Monitor:container:update_containers:"
+    # IO.puts "Monitor:container:update_containers:"
 
     new_containers =
       Dockerex.Client.get("containers/json")
-      |> S.each(&( IO.puts "new container: #{inspect &1}"))
+      # |> S.each(&( IO.puts "new container: #{inspect &1}"))
       |> S.filter(&( Regex.match?(~r/running|start/, Map.fetch!(&1, "State"))))
       |> S.map(&( &1 |> Map.drop(ignorekeys) ))
       |> S.map(&( {Map.fetch!(&1, "Id"), &1} ))
@@ -40,26 +38,43 @@ defmodule DockerLogger.Monitor do
     {:noreply, %{ state | containers: Map.merge(containers,new_containers)} }
   end
 
-  def handle_cast({:process, container_info}, state) do
+  def handle_cast({:process, %{ "Id" => id } = container_info}, state) do
+    {:ok, pid} = container_info
+      |> DockerLogger.StreamProcessSupervisor.start_container_watcher()
 
-    IO.puts "Monitor:container:res: #{inspect container_info}"
-    container_info
-    |> DockerLogger.StreamProcessSupervisor.start_container_watcher()
-
-    {:noreply, state}
+    IO.puts "Monitor:container:spawn: id: #{inspect pid} - #{id}"
+    {:noreply, %{ state | pids: Map.put(state.pids, id, pid)} }
   end
 
-  def handle_cast({:event, %{"Action" => action} = event }, state) do
-    IO.puts "Monitor:event:: #{inspect event }"
-    case action do
+  def handle_cast({:event, raw_event }, state) when is_binary(raw_event) do
+    event = Poison.decode!(raw_event)
+    IO.puts "\nMonitor:event:: #{inspect event }"
+
+    case Map.get(event, "Action", :error) do
       "start" ->
         GenServer.cast self(), :update_containers
         {:noreply, state}
       "die" ->
-        id = Map.fetch!(event, "ID", nil) || Map.fetch!(event, "Id")
-        {:noreply, %{ state | containers: Map.delete(state.containers, id) } }
+        id = Map.get(event, "ID") || Map.get(event, "Id")  || Map.get(event, "id") || raise "missing id"
+        {pid, pids} = Map.pop(state.pids, id)
+        IO.puts "Killing: pid: #{inspect pid}, id: #{id}"
+        state = %{ state | containers: Map.delete(state.containers, id) }
+        state = %{ state | pids: pids }
+        {:noreply, state }
       _ ->
         {:noreply, state}
     end
   end
+
+  def terminate(reason, state) do
+    IO.puts "Terminating monitor: reason: #{inspect reason} state: #{inspect state}"
+
+    for {cid, pid} <- state.pids do
+      IO.puts "killing container logger: #{inspect pid} - #{inspect cid} "
+      Process.exit(pid, :kill)
+    end
+
+    reason
+  end
+
 end
