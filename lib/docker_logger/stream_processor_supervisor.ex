@@ -1,5 +1,6 @@
 defmodule DockerLogger.StreamProcessSupervisor do
   use Supervisor
+  require Logger
   alias Elixir.Stream, as: S
 
   @name DockerLogger.StreamProcessSupervisor
@@ -9,7 +10,7 @@ defmodule DockerLogger.StreamProcessSupervisor do
   end
 
   def start_container_watcher(%{"Id" => id} = info) do
-    # IO.puts "Monitor:container: #{inspect info}"
+    # Logger.debug "Monitor:container: #{inspect info}"
 
     cmd = "GET /containers/#{id}/logs?stderr=1&stdout=1&timestamps=0&follow=1&since=#{DateTime.to_unix(DateTime.utc_now) - 1} HTTP/1.1\n"
     args = %{info: info, cmd: cmd, stream_handler: :logs}

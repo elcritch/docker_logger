@@ -1,16 +1,17 @@
 defmodule DockerLogger.StreamProcessor do
   use GenServer
+  require Logger
   alias Elixir.Stream, as: S
 
   @string_size_limit 20_000
 
   def start_link(args) do
-    IO.puts "StreamProcessor: #{inspect args}"
+    Logger.debug "StreamProcessor: #{inspect args}"
     GenServer.start_link(__MODULE__,args,[])
   end
 
   def init(args) do
-    IO.puts "StreamProcessor: #{inspect args}"
+    Logger.debug "StreamProcessor: #{inspect args}"
     {:ok, socket} = :gen_tcp.connect({:local, "/var/run/docker.sock"}, 0, [{:active, false}, :binary])
     GenServer.cast self(), :start
     GenServer.cast self(), args.stream_handler
@@ -63,7 +64,7 @@ defmodule DockerLogger.StreamProcessor do
   end
 
   def process_log(item, info) do
-    IO.puts "logs: #{inspect item}, info: #{inspect Map.fetch!(info, "Id")}"
+    Logger.debug "logs: #{inspect item}, info: #{inspect Map.fetch!(info, "Id")}"
   end
 
   def stream_to_lines(stream) do
@@ -99,7 +100,7 @@ defmodule DockerLogger.StreamProcessor do
         end
       end,
       fn x ->
-        IO.puts "after chunker: #{inspect x}"
+        Logger.debug "after chunker: #{inspect x}"
         {:cont, x, :none}
       end)
   end
