@@ -3,7 +3,7 @@ defmodule LogIts.Application do
 
   def start(_type, _args) do
     children = [
-      LogIts.Monitor,
+      LogIts.Docker.Monitor,
       LogIts.StreamProcessSupervisor,
     ]
 
