@@ -34,8 +34,10 @@ defmodule LogIts.Docker.Processor do
 
   def process_event_stream(%{socket: socket, id: id, sink: sink} = state) do
     # process events
+    IO.puts "process_event_stream: #{inspect sink}"
     create_stream(socket)
     |> stream_to_lines
+    |> S.map(&(IO.inspect &1, label: "process_event_stream"))
     |> S.chunk_every(3)
     |> S.map(&(Enum.at(&1,1)))
     |> Enum.each(fn event -> GenServer.cast(sink, {:event, event}) end)

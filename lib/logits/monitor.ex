@@ -29,7 +29,9 @@ defmodule LogIts.Monitor do
   end
 
   def handle_cast(:start, state) do
-    LogIts.StreamProcessSupervisor.start_events_watcher(self())
+    res = LogIts.StreamProcessSupervisor.start_events_watcher(self())
+    IO.puts "LogIts.Monitor:process_event_stream: #{inspect res}"
+
     {:noreply, state}
   end
 

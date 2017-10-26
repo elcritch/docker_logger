@@ -77,6 +77,7 @@ defmodule LogIts.Spout.AwsCloud do
     Logger.debug "#{__MODULE__}: put_log_events:: #{inspect result }"
     nextSequenceToken = Map.get result, "nextSequenceToken"
     state = %{ state | seq_token: nextSequenceToken}
+    state = %{ state | logs: []}
     new_state(state)
   end
 
