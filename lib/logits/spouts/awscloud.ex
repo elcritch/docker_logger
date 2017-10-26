@@ -9,7 +9,7 @@ defmodule LogIts.Spout.AwsCloud do
   @logGroupName "logits2"
   @logStreamName "test1"
   @logInterval 5_000
-  @logLimit 10_000
+  @logLimit 20_000
 
   defstart start_link(args \\ []) do
     access_key_id = System.get_env("AWS_ACCESS_KEY_ID")
@@ -53,8 +53,11 @@ defmodule LogIts.Spout.AwsCloud do
        "timestamp": DateTime.to_unix(DateTime.utc_now) * 1000
     }
 
-    if length(state.logs) > @logLimit, do: send self(), :push_logs
-    new_state( %{ state | logs: state.logs ++ [item]} )
+    if length(state.logs) > @logLimit do
+      new_state( %{ state | logs: state.logs } )
+    else
+      new_state( %{ state | logs: state.logs ++ [item]} )
+    end
   end
 
   defhandleinfo :push_logs, state: %{logs: []} = state do
