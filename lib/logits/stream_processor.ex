@@ -28,7 +28,7 @@ defmodule LogIts.StreamProcessor do
 
   def handle_cast(:logs, %{socket: socket, info: info, stream_handler: stream_handler} = state) do
     Processor.create_log_stream(state)
-    |> stream_handler.()
+    |> stream_handler.(info)
     |> Processor.start()
 
     {:stop, :normal, state}

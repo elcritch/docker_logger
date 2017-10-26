@@ -86,9 +86,11 @@ defmodule LogIts.Spout.AwsCloud do
 
   defcast stop, do: stop_server(:normal)
 
-  def process_log_stream(stream, pid) do
+  def process_log_stream(stream) do
+    {:ok, awspid} = LogIts.Spout.AwsCloud.start_link();
+
     stream
-    |> S.each(&( AwsCloud.logitem(pid, &1) ))
+    |> S.each(&( AwsCloud.logitem(awspid, &1) ))
   end
 
 

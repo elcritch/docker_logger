@@ -22,7 +22,7 @@ defmodule LogIts.Docker.Monitor do
         {func, _} = Code.eval_string(handler, [] )
         func
       nil = handler ->
-        &default_handler/1
+        &default_handler/2
     end
     state =
       %{containers: %{}, pids: %{}, stream_handler: stream_handler}
@@ -36,7 +36,7 @@ defmodule LogIts.Docker.Monitor do
     {:noreply, state}
   end
 
-  def default_handler(stream) do
+  def default_handler(stream, info) do
     IO.inspect stream, label: "stream:default_handler"
     # {:ok, awspid} = LogIts.Spout.AwsCloud.start_link()
     #
