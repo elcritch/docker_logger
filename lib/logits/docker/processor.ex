@@ -5,6 +5,10 @@ defmodule LogIts.Docker.Processor do
 
   @string_size_limit 20_000
 
+  def start(stream) do
+    stream |> Enum.each(fn x -> end)
+  end
+
   def process_http_protocol(%{socket: socket, cmd: cmd} = state) do
     socket |> :gen_tcp.send(cmd)
     socket |> :gen_tcp.send("Host: localhost\r\n")
@@ -19,13 +23,13 @@ defmodule LogIts.Docker.Processor do
     |> Enum.to_list
   end
 
-  def process_log_stream(%{socket: socket, info: info} = state, log_handler) do
+  def create_log_stream(%{socket: socket, info: info} = state) do
     # process docker logs
     create_stream(socket)
     |> docker_log_stream_parser
     |> stream_to_lines
     |> parse_docker_log_item
-    |> Enum.each( log_handler )
+    # |> Enum.each( log_handler )
   end
 
   def process_event_stream(%{socket: socket, id: id, sink: sink} = state) do

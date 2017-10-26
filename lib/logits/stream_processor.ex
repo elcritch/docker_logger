@@ -31,7 +31,11 @@ defmodule LogIts.StreamProcessor do
       Logger.debug "logs: #{inspect item}, info: #{inspect Map.fetch!(info, "Id")}"
     end
 
-    Processor.process_log_stream(state, log_handler)
+    Processor.create_log_stream(state)
+    |> LogIts.Spout.AwsCloud.process_log_stream
+    |> LogIts.Spout.SysLog.process_log_stream
+    |> Processor.start
+
     {:stop, :normal, state}
   end
 
