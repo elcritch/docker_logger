@@ -11,7 +11,21 @@ defmodule LogIts.Monitor do
   def init(args) do
     GenServer.cast self(), :start
     GenServer.cast self(), :update_containers
-    {:ok, %{containers: %{}, pids: %{}, stream_handler: &default_handler/1} |> Map.merge(args) }
+    config = Application.get_env(:logits, :monitor)
+
+    stream_handler = case config |> Keyword.get(:stream_handler) do
+      {mod,fun} ->
+        fn x -> apply(mod, fun, x) end
+      handler when is_function(handler) ->
+        handler
+      nil = handler ->
+        &default_handler/1
+    end
+
+    state =
+      %{containers: %{}, pids: %{}, stream_handler: stream_handler}
+      |> Map.merge(args)
+    {:ok, state}
   end
 
   def handle_cast(:start, state) do
@@ -51,7 +65,8 @@ defmodule LogIts.Monitor do
 
   def handle_cast({:process, %{ "Id" => id } = container_info}, state) do
 
-    {:ok, pid} = StreamProcessSupervisor.start_container_watcher(container_info, state.stream_handler)
+    {:ok, pid} =
+      StreamProcessSupervisor.start_container_watcher(container_info, state.stream_handler)
 
     Logger.info "Monitor:container:spawn:log_monitor: #{inspect pid} - container-id #{id}"
     {:noreply, %{ state | pids: Map.put(state.pids, id, pid)} }
