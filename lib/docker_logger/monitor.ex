@@ -49,8 +49,8 @@ defmodule DockerLogger.Monitor do
 
   def handle_cast({:event, raw_event }, state) when is_binary(raw_event) do
     event = Poison.decode!(raw_event)
-    action = Map.get(event, "Action") || Map.get(event, "action") || raise "missing action"
-    id = Map.get(event, "ID") || Map.get(event, "Id")  || Map.get(event, "id") || raise "missing id"
+    action = Map.get(event, "Action") || Map.get(event, "action") || raise "event missing action"
+    id = Map.get(event, "ID") || Map.get(event, "Id")  || Map.get(event, "id")
     Logger.info "Monitor:handle:docker_event:: #{inspect action} -- #{inspect id}"
 
     case action do
@@ -58,6 +58,7 @@ defmodule DockerLogger.Monitor do
         GenServer.cast self(), :update_containers
         {:noreply, state}
       "die" ->
+        id = id || raise "missing id"
         {pid, pids} = Map.pop(state.pids, id)
         Logger.debug "Killing: pid: #{inspect pid}, id: #{id}"
         state = %{ state | containers: Map.delete(state.containers, id) }
