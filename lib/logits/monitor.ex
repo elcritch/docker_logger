@@ -2,6 +2,7 @@ defmodule LogIts.Monitor do
   use GenServer
   require Logger
   alias Elixir.Stream, as: S
+  alias LogIts.StreamProcessSupervisor
 
   def start_link(args \\ []) do
     GenServer.start_link(__MODULE__,%{},name: __MODULE__)
@@ -10,12 +11,21 @@ defmodule LogIts.Monitor do
   def init(args) do
     GenServer.cast self(), :start
     GenServer.cast self(), :update_containers
-    {:ok, %{containers: %{}, pids: %{}} |> Map.merge(args) }
+    {:ok, %{containers: %{}, pids: %{}, stream_handler: &default_handler/1} |> Map.merge(args) }
   end
 
   def handle_cast(:start, state) do
     LogIts.StreamProcessSupervisor.start_events_watcher(self())
     {:noreply, state}
+  end
+
+  def default_handler(stream) do
+    IO.inspect stream, label: "stream:default_handler"
+    {:ok, awspid} = LogIts.Spout.AwsCloud.start_link()
+
+    stream
+    |> LogIts.Spout.AwsCloud.process_log_stream(awspid)
+    |> LogIts.Spout.SysLog.process_log_stream
   end
 
   def handle_cast(:update_containers, %{containers: containers} = state) do
@@ -40,8 +50,8 @@ defmodule LogIts.Monitor do
   end
 
   def handle_cast({:process, %{ "Id" => id } = container_info}, state) do
-    {:ok, pid} = container_info
-      |> LogIts.StreamProcessSupervisor.start_container_watcher()
+
+    {:ok, pid} = StreamProcessSupervisor.start_container_watcher(container_info, state.stream_handler)
 
     Logger.info "Monitor:container:spawn:log_monitor: #{inspect pid} - container-id #{id}"
     {:noreply, %{ state | pids: Map.put(state.pids, id, pid)} }

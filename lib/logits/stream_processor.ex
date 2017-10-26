@@ -17,7 +17,7 @@ defmodule LogIts.StreamProcessor do
     Logger.debug "StreamProcessor: #{inspect args}"
     {:ok, socket} = :gen_tcp.connect({:local, "/var/run/docker.sock"}, 0, [{:active, false}, :binary])
     GenServer.cast self(), :start
-    GenServer.cast self(), args.stream_handler
+    GenServer.cast self(), args.stream_type
     {:ok, %{socket: socket} |> Map.merge(args) }
   end
 
@@ -26,19 +26,12 @@ defmodule LogIts.StreamProcessor do
     {:noreply, state}
   end
 
-  def handle_cast(:logs, %{socket: socket, info: info} = state) do
-    log_handler = fn item ->
-      Logger.debug "logs: #{inspect item}, info: #{inspect Map.fetch!(info, "Id")}"
-    end
-
-    {:ok, awspid} = LogIts.Spout.AwsCloud.start_link()
-
+  def handle_cast(:logs, %{socket: socket, info: info, stream_handler: stream_handler} = state) do
     Processor.create_log_stream(state)
-    |> LogIts.Spout.AwsCloud.process_log_stream(awspid)
-    |> LogIts.Spout.SysLog.process_log_stream
-    |> Processor.start
+    |> stream_handler.()
+    |> Processor.start()
 
-    {:stop, :normal, state |> Map.put(:awspid, awspid)}
+    {:stop, :normal, state}
   end
 
   def handle_cast(:events, %{socket: socket, id: id, sink: sink} = state) do
