@@ -9,7 +9,7 @@ defmodule LogIts.Spout.AwsCloud do
   @logGroupName "logits2"
   @logStreamName "test1"
   @logInterval 5_000
-  @logLimit 1_000
+  @logLimit 10_000
 
   defstart start_link(args \\ []) do
     access_key_id = System.get_env("AWS_ACCESS_KEY_ID")
