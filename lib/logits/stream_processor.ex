@@ -35,7 +35,6 @@ defmodule LogIts.StreamProcessor do
   end
 
   def handle_cast(:events, %{socket: socket, id: id, sink: sink} = state) do
-    IO.puts "process_event_stream: #{inspect sink}"
     Processor.process_event_stream(state)
     {:stop, :normal, state}
   end

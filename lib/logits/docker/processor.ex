@@ -34,7 +34,6 @@ defmodule LogIts.Docker.Processor do
 
   def process_event_stream(%{socket: socket, id: id, sink: sink} = state) do
     # process events
-    IO.puts "process_event_stream: #{inspect sink}"
     create_stream(socket)
     |> stream_to_lines
     |> S.map(&(IO.inspect &1, label: "process_event_stream"))

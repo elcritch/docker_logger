@@ -18,7 +18,6 @@ defmodule LogIts.StreamProcessSupervisor do
   end
 
   def start_events_watcher(pid) do
-    IO.puts "start_events_watcher:process_event_stream: #{inspect pid}"
     ts = DateTime.to_unix(DateTime.utc_now)
     cmd = "GET /events?since=#{ts} HTTP/1.1\n"
     args = %{id: ts, cmd: cmd, stream_type: :events, sink: pid}
