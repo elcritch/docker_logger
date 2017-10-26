@@ -1,4 +1,4 @@
-defmodule DockerLogger.Monitor do
+defmodule LogIts.Monitor do
   use GenServer
   require Logger
   alias Elixir.Stream, as: S
@@ -14,7 +14,7 @@ defmodule DockerLogger.Monitor do
   end
 
   def handle_cast(:start, state) do
-    DockerLogger.StreamProcessSupervisor.start_events_watcher(self())
+    LogIts.StreamProcessSupervisor.start_events_watcher(self())
     {:noreply, state}
   end
 
@@ -41,7 +41,7 @@ defmodule DockerLogger.Monitor do
 
   def handle_cast({:process, %{ "Id" => id } = container_info}, state) do
     {:ok, pid} = container_info
-      |> DockerLogger.StreamProcessSupervisor.start_container_watcher()
+      |> LogIts.StreamProcessSupervisor.start_container_watcher()
 
     Logger.info "Monitor:container:spawn:log_monitor: #{inspect pid} - container-id #{id}"
     {:noreply, %{ state | pids: Map.put(state.pids, id, pid)} }

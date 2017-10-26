@@ -1,6 +1,6 @@
-defmodule DockerLogger do
+defmodule LogIts do
   @moduledoc """
-  Documentation for DockerLogger.
+  Documentation for LogIts.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule DockerLogger do
 
   ## Examples
 
-      iex> DockerLogger.hello
+      iex> LogIts.hello
       :world
 
   """

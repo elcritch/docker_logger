@@ -14,11 +14,11 @@ config :dockerex,
 
 # You can configure your application as:
 #
-#     config :docker_logger, key: :value
+#     config :logits, key: :value
 #
 # and access this configuration in your application as:
 #
-#     Application.get_env(:docker_logger, :key)
+#     Application.get_env(:logits, :key)
 #
 # You can also configure a 3rd-party app:
 #

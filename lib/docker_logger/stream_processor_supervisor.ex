@@ -1,9 +1,9 @@
-defmodule DockerLogger.StreamProcessSupervisor do
+defmodule LogIts.StreamProcessSupervisor do
   use Supervisor
   require Logger
   alias Elixir.Stream, as: S
 
-  @name DockerLogger.StreamProcessSupervisor
+  @name LogIts.StreamProcessSupervisor
 
   def start_link(_opts) do
     Supervisor.start_link(__MODULE__, :ok, name: @name)
@@ -26,8 +26,8 @@ defmodule DockerLogger.StreamProcessSupervisor do
 
   def init(:ok) do
     children = [
-      # DockerLogger.StreamProcessor,
-      %{id: DockerLogger.StreamProcessor, start: {DockerLogger.StreamProcessor, :start_link, []}}
+      # LogIts.StreamProcessor,
+      %{id: LogIts.StreamProcessor, start: {LogIts.StreamProcessor, :start_link, []}}
     ]
 
     opts = [strategy: :simple_one_for_one, name: StreamProcessSupervisor]

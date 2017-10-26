@@ -1,4 +1,4 @@
-defmodule DockerLogger.Docker.Processor do
+defmodule LogIts.Docker.Processor do
   use GenServer
   require Logger
   alias Elixir.Stream, as: S

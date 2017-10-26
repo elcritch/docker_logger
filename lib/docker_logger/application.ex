@@ -1,13 +1,13 @@
-defmodule DockerLogger.Application do
+defmodule LogIts.Application do
   use Application
 
   def start(_type, _args) do
     children = [
-      DockerLogger.Monitor,
-      DockerLogger.StreamProcessSupervisor,
+      LogIts.Monitor,
+      LogIts.StreamProcessSupervisor,
     ]
 
-    opts = [strategy: :one_for_one, name: DockerLogger.Supervisor]
+    opts = [strategy: :one_for_one, name: LogIts.Supervisor]
     Supervisor.start_link(children, opts)
   end
 

@@ -1,10 +1,10 @@
-defmodule DockerLogger.StreamProcessor do
+defmodule LogIts.StreamProcessor do
   use GenServer
   require Logger
   alias Elixir.Stream, as: S
 
   # Include docker specific pieces
-  alias DockerLogger.Docker.Processor, as: Processor
+  alias LogIts.Docker.Processor, as: Processor
 
   @string_size_limit 20_000
 

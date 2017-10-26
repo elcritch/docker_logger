@@ -1,8 +1,8 @@
-defmodule DockerLoggerTest do
+defmodule LogItsTest do
   use ExUnit.Case
-  doctest DockerLogger
+  doctest LogIts
 
   test "greets the world" do
-    assert DockerLogger.hello() == :world
+    assert LogIts.hello() == :world
   end
 end

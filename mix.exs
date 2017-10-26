@@ -1,9 +1,9 @@
-defmodule DockerLogger.Mixfile do
+defmodule LogIts.Mixfile do
   use Mix.Project
 
   def project do
     [
-      app: :docker_logger,
+      app: :logits,
       version: "0.1.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env == :prod,
@@ -15,7 +15,7 @@ defmodule DockerLogger.Mixfile do
   def application do
     [
       extra_applications: [:logger],
-      mod: {DockerLogger.Application, []}
+      mod: {LogIts.Application, []}
     ]
   end
 
