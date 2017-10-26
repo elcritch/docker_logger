@@ -18,10 +18,12 @@ defmodule LogIts.Docker.Monitor do
         fn x -> apply(mod, fun, x) end
       handler when is_function(handler) ->
         handler
+      handler when is_binary(handler) ->
+        {func, _} = Code.eval_string(handler, [] )
+        func
       nil = handler ->
         &default_handler/1
     end
-
     state =
       %{containers: %{}, pids: %{}, stream_handler: stream_handler}
       |> Map.merge(args)
@@ -36,11 +38,12 @@ defmodule LogIts.Docker.Monitor do
 
   def default_handler(stream) do
     IO.inspect stream, label: "stream:default_handler"
-    {:ok, awspid} = LogIts.Spout.AwsCloud.start_link()
-
+    # {:ok, awspid} = LogIts.Spout.AwsCloud.start_link()
+    #
+    # stream
+    # |> LogIts.Spout.AwsCloud.process_log_stream(awspid)
+    # |> LogIts.Spout.SysLog.process_log_stream
     stream
-    |> LogIts.Spout.AwsCloud.process_log_stream(awspid)
-    |> LogIts.Spout.SysLog.process_log_stream
   end
 
   def handle_cast(:update_containers, %{containers: containers} = state) do

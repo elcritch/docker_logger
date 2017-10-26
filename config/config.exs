@@ -8,7 +8,14 @@ config :dockerex,
 
 config :logits,
   :monitor,
-    stream_handler: nil
+    stream_handler: System.get_env("LOGITS_FUNCTION")
+    # stream_handler_example: """
+    #   fn s ->
+    #      IO.puts: "stream:custom_handler\";
+    #      {:ok, awspid} = LogIts.Spout.AwsCloud.start_link();
+    #      stream |> LogIts.Spout.AwsCloud.process_log_stream(awspid)
+    #   end
+    # """
 
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
