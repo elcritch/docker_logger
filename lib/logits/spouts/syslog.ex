@@ -5,6 +5,6 @@ defmodule LogIts.Spout.SysLog do
 
   def process_log_stream(stream) do
     stream
-    |> S.each(&( Logger.info "Syslog: #{inspect &1}" ))
+    |> S.each(&( Logger.debug "Syslog: #{inspect &1}" ))
   end
 end

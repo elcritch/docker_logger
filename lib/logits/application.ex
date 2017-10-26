@@ -5,6 +5,7 @@ defmodule LogIts.Application do
     children = [
       LogIts.Monitor,
       LogIts.StreamProcessSupervisor,
+      {LogIts.Spout.AwsCloud, []},
     ]
 
     opts = [strategy: :one_for_one, name: LogIts.Supervisor]

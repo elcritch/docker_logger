@@ -31,12 +31,14 @@ defmodule LogIts.StreamProcessor do
       Logger.debug "logs: #{inspect item}, info: #{inspect Map.fetch!(info, "Id")}"
     end
 
+    {:ok, awspid} = LogIts.Spout.AwsCloud.start_link()
+
     Processor.create_log_stream(state)
-    |> LogIts.Spout.AwsCloud.process_log_stream
+    |> LogIts.Spout.AwsCloud.process_log_stream(awspid)
     |> LogIts.Spout.SysLog.process_log_stream
     |> Processor.start
 
-    {:stop, :normal, state}
+    {:stop, :normal, state |> Map.put(:awspid, awspid)}
   end
 
   def handle_cast(:events, %{socket: socket, id: id, sink: sink} = state) do
